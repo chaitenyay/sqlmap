@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2016 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import atexit
@@ -53,28 +53,33 @@ def clearHistory():
     readline.clear_history()
 
 def saveHistory(completion=None):
-    if not readlineAvailable():
-        return
-
-    if completion == AUTOCOMPLETE_TYPE.SQL:
-        historyPath = paths.SQL_SHELL_HISTORY
-    elif completion == AUTOCOMPLETE_TYPE.OS:
-        historyPath = paths.OS_SHELL_HISTORY
-    else:
-        historyPath = paths.SQLMAP_SHELL_HISTORY
-
     try:
-        with open(historyPath, "w+"):
+        if not readlineAvailable():
+            return
+
+        if completion == AUTOCOMPLETE_TYPE.SQL:
+            historyPath = paths.SQL_SHELL_HISTORY
+        elif completion == AUTOCOMPLETE_TYPE.OS:
+            historyPath = paths.OS_SHELL_HISTORY
+        elif completion == AUTOCOMPLETE_TYPE.API:
+            historyPath = paths.API_SHELL_HISTORY
+        else:
+            historyPath = paths.SQLMAP_SHELL_HISTORY
+
+        try:
+            with open(historyPath, "w+"):
+                pass
+        except:
             pass
-    except:
-        pass
 
-    readline.set_history_length(MAX_HISTORY_LENGTH)
-    try:
-        readline.write_history_file(historyPath)
-    except IOError, msg:
-        warnMsg = "there was a problem writing the history file '%s' (%s)" % (historyPath, msg)
-        logger.warn(warnMsg)
+        readline.set_history_length(MAX_HISTORY_LENGTH)
+        try:
+            readline.write_history_file(historyPath)
+        except IOError, msg:
+            warnMsg = "there was a problem writing the history file '%s' (%s)" % (historyPath, msg)
+            logger.warn(warnMsg)
+    except KeyboardInterrupt:
+        pass
 
 def loadHistory(completion=None):
     if not readlineAvailable():
@@ -86,6 +91,8 @@ def loadHistory(completion=None):
         historyPath = paths.SQL_SHELL_HISTORY
     elif completion == AUTOCOMPLETE_TYPE.OS:
         historyPath = paths.OS_SHELL_HISTORY
+    elif completion == AUTOCOMPLETE_TYPE.API:
+        historyPath = paths.API_SHELL_HISTORY
     else:
         historyPath = paths.SQLMAP_SHELL_HISTORY
 
@@ -104,20 +111,20 @@ def autoCompletion(completion=None, os=None, commands=None):
         if os == OS.WINDOWS:
             # Reference: http://en.wikipedia.org/wiki/List_of_DOS_commands
             completer = CompleterNG({
-                                      "copy": None, "del": None, "dir": None,
-                                      "echo": None, "md": None, "mem": None,
-                                      "move": None, "net": None, "netstat -na": None,
-                                      "ver": None, "xcopy": None, "whoami": None,
-                                    })
+                "copy": None, "del": None, "dir": None,
+                "echo": None, "md": None, "mem": None,
+                "move": None, "net": None, "netstat -na": None,
+                "ver": None, "xcopy": None, "whoami": None,
+            })
 
         else:
             # Reference: http://en.wikipedia.org/wiki/List_of_Unix_commands
             completer = CompleterNG({
-                                      "cp": None, "rm": None, "ls": None,
-                                      "echo": None, "mkdir": None, "free": None,
-                                      "mv": None, "ifconfig": None, "netstat -natu": None,
-                                      "pwd": None, "uname": None, "id": None,
-                                    })
+                "cp": None, "rm": None, "ls": None,
+                "echo": None, "mkdir": None, "free": None,
+                "mv": None, "ifconfig": None, "netstat -natu": None,
+                "pwd": None, "uname": None, "id": None,
+            })
 
         readline.set_completer(completer.complete)
         readline.parse_and_bind("tab: complete")

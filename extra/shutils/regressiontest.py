@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-# Copyright (c) 2006-2016 sqlmap developers (http://sqlmap.org/)
-# See the file 'doc/COPYING' for copying permission
+# Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+# See the file 'LICENSE' for copying permission
 
 import codecs
 import inspect
@@ -27,7 +27,7 @@ SMTP_SERVER = "127.0.0.1"
 SMTP_PORT = 25
 SMTP_TIMEOUT = 30
 FROM = "regressiontest@sqlmap.org"
-#TO = "dev@sqlmap.org"
+# TO = "dev@sqlmap.org"
 TO = ["bernardo.damele@gmail.com", "miroslav.stampar@gmail.com"]
 SUBJECT = "regression test started on %s using revision %s" % (START_TIME, getRevisionNumber())
 TARGET = "debian"
@@ -40,7 +40,7 @@ def prepare_email(content):
     msg = MIMEMultipart()
     msg["Subject"] = SUBJECT
     msg["From"] = FROM
-    msg["To"] = TO if isinstance(TO, basestring) else ",".join(TO)
+    msg["To"] = TO if isinstance(TO, basestring) else ','.join(TO)
 
     msg.attach(MIMEText(content))
 
@@ -83,7 +83,7 @@ def main():
     if stderr:
         failure_email("Execution of regression test failed with error:\n\n%s" % stderr)
 
-    failed_tests = re.findall("running live test case: (.+?) \((\d+)\/\d+\)[\r]*\n.+test failed (at parsing items: (.+))?\s*\- scan folder: (\/.+) \- traceback: (.*?)( - SQL injection not detected)?[\r]*\n", stdout, re.M)
+    failed_tests = re.findall(r"running live test case: (.+?) \((\d+)\/\d+\)[\r]*\n.+test failed (at parsing items: (.+))?\s*\- scan folder: (\/.+) \- traceback: (.*?)( - SQL injection not detected)?[\r]*\n", stdout)
 
     for failed_test in failed_tests:
         title = failed_test[0]

@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2016 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import re
@@ -11,6 +11,7 @@ from extra.safe2bin.safe2bin import safechardecode
 from lib.core.agent import agent
 from lib.core.bigarray import BigArray
 from lib.core.common import Backend
+from lib.core.common import getSafeExString
 from lib.core.common import getUnicode
 from lib.core.common import isNoneValue
 from lib.core.common import isNumPosStrValue
@@ -27,10 +28,11 @@ from lib.core.enums import EXPECTED
 from lib.core.exception import SqlmapConnectionException
 from lib.core.exception import SqlmapNoneDataException
 from lib.core.settings import MAX_INT
+from lib.core.settings import NULL
 from lib.core.unescaper import unescaper
 from lib.request import inject
 
-def pivotDumpTable(table, colList, count=None, blind=True):
+def pivotDumpTable(table, colList, count=None, blind=True, alias=None):
     lengths = {}
     entries = {}
 
@@ -41,7 +43,7 @@ def pivotDumpTable(table, colList, count=None, blind=True):
 
     if count is None:
         query = dumpNode.count % table
-        query = whereQuery(query)
+        query = agent.whereQuery(query)
         count = inject.getValue(query, union=False, error=False, expected=EXPECTED.INT, charsetType=CHARSET_TYPE.DIGITS) if blind else inject.getValue(query, blind=False, time=False, expected=EXPECTED.INT)
 
     if isinstance(count, basestring) and count.isdigit():
@@ -87,18 +89,18 @@ def pivotDumpTable(table, colList, count=None, blind=True):
     if not validPivotValue:
         for column in colList:
             infoMsg = "fetching number of distinct "
-            infoMsg += "values for column '%s'" % column
+            infoMsg += "values for column '%s'" % column.replace(("%s." % alias) if alias else "", "")
             logger.info(infoMsg)
 
             query = dumpNode.count2 % (column, table)
-            query = whereQuery(query)
+            query = agent.whereQuery(query)
             value = inject.getValue(query, blind=blind, union=not blind, error=not blind, expected=EXPECTED.INT, charsetType=CHARSET_TYPE.DIGITS)
 
             if isNumPosStrValue(value):
                 validColumnList = True
 
                 if value == count:
-                    infoMsg = "using column '%s' as a pivot " % column
+                    infoMsg = "using column '%s' as a pivot " % column.replace(("%s." % alias) if alias else "", "")
                     infoMsg += "for retrieving row data"
                     logger.info(infoMsg)
 
@@ -121,11 +123,11 @@ def pivotDumpTable(table, colList, count=None, blind=True):
 
     def _(column, pivotValue):
         if column == colList[0]:
-            query = dumpNode.query.replace("'%s'", "%s") % (agent.preprocessField(table, column), table, agent.preprocessField(table, column), unescaper.escape(pivotValue, False))
+            query = dumpNode.query.replace("'%s'" if unescaper.escape(pivotValue, False) != pivotValue else "%s", "%s") % (agent.preprocessField(table, column), table, agent.preprocessField(table, column), unescaper.escape(pivotValue, False))
         else:
-            query = dumpNode.query2.replace("'%s'", "%s") % (agent.preprocessField(table, column), table, agent.preprocessField(table, colList[0]), unescaper.escape(pivotValue, False))
+            query = dumpNode.query2.replace("'%s'" if unescaper.escape(pivotValue, False) != pivotValue else "%s", "%s") % (agent.preprocessField(table, column), table, agent.preprocessField(table, colList[0]), unescaper.escape(pivotValue, False))
 
-        query = whereQuery(query)
+        query = agent.whereQuery(query)
         return unArrayizeValue(inject.getValue(query, blind=blind, time=blind, union=not blind, error=not blind))
 
     try:
@@ -145,9 +147,10 @@ def pivotDumpTable(table, colList, count=None, blind=True):
                         except ValueError:
                             pass
 
-                    if isNoneValue(value):
+                    if isNoneValue(value) or value == NULL:
                         breakRetrieval = True
                         break
+
                     pivotValue = safechardecode(value)
 
                 if conf.limitStart or conf.limitStop:
@@ -172,25 +175,10 @@ def pivotDumpTable(table, colList, count=None, blind=True):
         warnMsg += "will display partial output"
         logger.warn(warnMsg)
 
-    except SqlmapConnectionException, e:
-        errMsg = "connection exception detected. sqlmap "
+    except SqlmapConnectionException, ex:
+        errMsg = "connection exception detected ('%s'). sqlmap " % getSafeExString(ex)
         errMsg += "will display partial output"
-        errMsg += "'%s'" % e
+
         logger.critical(errMsg)
 
     return entries, lengths
-
-def whereQuery(query):
-    if conf.dumpWhere and query:
-        prefix, suffix = query.split(" ORDER BY ") if " ORDER BY " in query else (query, "")
-
-        if "%s)" % conf.tbl.upper() in prefix.upper():
-            prefix = re.sub(r"(?i)%s\)" % re.escape(conf.tbl), "%s WHERE %s)" % (conf.tbl, conf.dumpWhere), prefix)
-        elif re.search(r"(?i)\bWHERE\b", prefix):
-            prefix += " AND %s" % conf.dumpWhere
-        else:
-            prefix += " WHERE %s" % conf.dumpWhere
-
-        query = "%s ORDER BY %s" % (prefix, suffix) if suffix else prefix
-
-    return query

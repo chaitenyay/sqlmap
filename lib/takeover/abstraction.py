@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 """
-Copyright (c) 2006-2016 sqlmap developers (http://sqlmap.org/)
-See the file 'doc/COPYING' for copying permission
+Copyright (c) 2006-2018 sqlmap developers (http://sqlmap.org/)
+See the file 'LICENSE' for copying permission
 """
 
 import sys
@@ -25,13 +25,12 @@ from lib.core.shell import autoCompletion
 from lib.request import inject
 from lib.takeover.udf import UDF
 from lib.takeover.web import Web
-from lib.takeover.xp_cmdshell import Xp_cmdshell
+from lib.takeover.xp_cmdshell import XP_cmdshell
 
-
-class Abstraction(Web, UDF, Xp_cmdshell):
+class Abstraction(Web, UDF, XP_cmdshell):
     """
     This class defines an abstraction layer for OS takeover functionalities
-    to UDF / Xp_cmdshell objects
+    to UDF / XP_cmdshell objects
     """
 
     def __init__(self):
@@ -40,7 +39,7 @@ class Abstraction(Web, UDF, Xp_cmdshell):
 
         UDF.__init__(self)
         Web.__init__(self)
-        Xp_cmdshell.__init__(self)
+        XP_cmdshell.__init__(self)
 
     def execCmd(self, cmd, silent=False):
         if self.webBackdoorUrl and not isStackingAvailable():
@@ -75,17 +74,17 @@ class Abstraction(Web, UDF, Xp_cmdshell):
         return safechardecode(retVal)
 
     def runCmd(self, cmd):
-        getOutput = None
+        choice = None
 
         if not self.alwaysRetrieveCmdOutput:
             message = "do you want to retrieve the command standard "
             message += "output? [Y/n/a] "
-            getOutput = readInput(message, default="Y")
+            choice = readInput(message, default='Y').upper()
 
-            if getOutput in ("a", "A"):
+            if choice == 'A':
                 self.alwaysRetrieveCmdOutput = True
 
-        if not getOutput or getOutput in ("y", "Y") or self.alwaysRetrieveCmdOutput:
+        if choice == 'Y' or self.alwaysRetrieveCmdOutput:
             output = self.evalCmd(cmd)
 
             if output:
@@ -166,16 +165,15 @@ class Abstraction(Web, UDF, Xp_cmdshell):
             msg += "statements as another DBMS user since you provided the "
             msg += "option '--dbms-creds'. If you are DBA, you can enable it. "
             msg += "Do you want to enable it? [Y/n] "
-            choice = readInput(msg, default="Y")
 
-            if not choice or choice in ("y", "Y"):
+            if readInput(msg, default='Y', boolean=True):
                 expression = getSQLSnippet(DBMS.MSSQL, "configure_openrowset", ENABLE="1")
                 inject.goStacked(expression)
 
         # TODO: add support for PostgreSQL
-        #elif Backend.isDbms(DBMS.PGSQL):
-        #    expression = getSQLSnippet(DBMS.PGSQL, "configure_dblink", ENABLE="1")
-        #    inject.goStacked(expression)
+        # elif Backend.isDbms(DBMS.PGSQL):
+        #     expression = getSQLSnippet(DBMS.PGSQL, "configure_dblink", ENABLE="1")
+        #     inject.goStacked(expression)
 
     def initEnv(self, mandatory=True, detailed=False, web=False, forceInit=False):
         self._initRunAs()
@@ -190,7 +188,7 @@ class Abstraction(Web, UDF, Xp_cmdshell):
 
             if mandatory and not self.isDba():
                 warnMsg = "functionality requested probably does not work because "
-                warnMsg += "the curent session user is not a database administrator"
+                warnMsg += "the current session user is not a database administrator"
 
                 if not conf.dbmsCred and Backend.getIdentifiedDbms() in (DBMS.MSSQL, DBMS.PGSQL):
                     warnMsg += ". You can try to use option '--dbms-cred' "
